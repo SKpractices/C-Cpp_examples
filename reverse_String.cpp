@@ -10,7 +10,7 @@ int main()
     char a[] = "Let's have fun.";
     int len,count =0;
     char b[len];
-
+    char[] getword(char []);
     
     //Get the length of array.
     len = sizeof(a)/sizeof(*a);
@@ -29,3 +29,22 @@ int main()
     
     return 0;
 }
+
+char [] getword(char a[])
+{
+    int len = sizeof(a)/sizeof(*a);
+    for(int i=0; i<len ; i++ )
+    {
+        if(a[i]==' ')
+        {
+            char b[len-i],c[i];
+            for(int k=i; k<len ; k++)
+            {
+                b[k-i] = a[k]  
+            }
+            
+            cout<<getword(b)<<
+        }
+        
+    }
+    }
