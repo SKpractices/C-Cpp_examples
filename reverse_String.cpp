@@ -1,5 +1,7 @@
 //Program to reverse the words in string. 
 
+//Program to reverse the words in string. 
+
 #include<iostream>
 #include<string>
 using namespace std;
@@ -7,44 +9,24 @@ using namespace std;
 int main()
 {
     //Get the string. 
-    char a[] = "Let's have fun.";
-    int len,count =0;
-    char b[len];
-    char[] getword(char []);
+    char a[] = "Let's have funferf fvrvrvrv.";
+    int len;
     
-    //Get the length of array.
     len = sizeof(a)/sizeof(*a);
-    cout<<len<<"\n";
-    for(int i=0;i<len;i++)
-    {
-        
-            b[i]=a[i];
-            if(a[i]==' ')
-            {
-                cout<<b;
-                cout<<" ";
-            }
-            }
     
-    
-    return 0;
-}
-
-char [] getword(char a[])
-{
-    int len = sizeof(a)/sizeof(*a);
-    for(int i=0; i<len ; i++ )
+    for(int i = len-1 ; i>=0 ; i--)
     {
         if(a[i]==' ')
         {
-            char b[len-i],c[i];
-            for(int k=i; k<len ; k++)
+            int l=1;
+            while(!((a[i+l]=' ') || (a[i+1]='\0')))
             {
-                b[k-i] = a[k]  
+                cout<<a[i+l];
+                l+=1;
             }
-            
-            cout<<getword(b)<<
+            cout<<' ';
         }
-        
     }
-    }
+    return 0;
+}
+
