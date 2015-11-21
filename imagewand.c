@@ -24,7 +24,7 @@ int main(int argc, const char * argv[])
     PixelIterator *iterator_ip,*iterator_op;
     PixelWand **pixels_ip;
     MagickWand * wand_ip, *wand_op;
-    MagickBooleanType flag1;
+    MagickBooleanType img_Check;
     char hex[128];
 
     
@@ -39,28 +39,26 @@ int main(int argc, const char * argv[])
     pwand_ip = NewPixelWand();
     
     // Read image and check its existance.
-    flag1 =  MagickReadImage(wand_ip, "/Users/SK_Mac/Downloads/image2.jpg");
+    img_Check =  MagickReadImage(wand_ip, "/Users/SK_Mac/Downloads/image1.jpg");
     
-    if(flag1==MagickFalse)
+    if(img_Check==MagickFalse)
     {
         printf("ERROR : - Image not found. ");
     }
     
     
-    //MagickQuantizeImage(wand_ip,256,GRAYColorspace,0,MagickFalse,MagickFalse);
-    
     //iterator to interate each pixel of image.
 
-    iterator_ip=NewPixelIterator(wand_ip);
+    iterator_ip= NewPixelIterator(wand_ip);
     
-
 
     
     // get the height and width
     
-    width1 = MagickGetImageWidth(wand_ip);
+    width1 =  MagickGetImageWidth(wand_ip);
     height1 = MagickGetImageHeight(wand_ip);
-    int img_IP[height1][width1];
+    
+    double img_IP[height1][width1];
 
     for (int i=0 ; i<height1;i++)
     {
@@ -70,22 +68,26 @@ int main(int argc, const char * argv[])
         for(int j=0 ; j<width1 ; j++)
         {
             //Get the each pixel values.
-            img_IP[i][j] = PixelGetRed(pixels_ip[j]);
+            img_IP[i][j]=255*PixelGetRed(pixels_ip[j]);
+            //printf("%f\n",img_IP[i][j]);
             //gray_val[i][j] = PixelGetAlpha(pixels_ip[j]);
             //gray_val[i][j] = PixelGetOpacity(pixels_ip[j]);
             //wand_ip(GetPixelY(pixels_ip[j]);
+            //printf("%d\n",img_IP[i][j]);
+
         }
     
     }
     
-    height2 = 100;
-    width2 = 100;
+    height2 =  500;
+    width2 =   500;
     
     // Bilineat linterpolation. 
     
-    int img_op[height2][width2];
-    float scale_h = height1/(float)height2;
-    float scale_w = width1/(float)width2;
+    unsigned char img_op[height2][width2];
+    
+    float scale_h = (float) height1/(float)height2;
+    float scale_w = (float) width1/(float)width2;
  
     
     for (int i = 0 ; i <height2 ; i++)
@@ -95,13 +97,20 @@ int main(int argc, const char * argv[])
             float height_Frac_Idx = i*scale_h;
             float width_Frac_Idx = i*scale_w;
             int height_idx, width_idx;
-            height_idx = height_Frac_Idx;
-            width_idx =width_Frac_Idx;
+            height_idx = (int) height_Frac_Idx;
+            width_idx =  (int) width_Frac_Idx;
             float del_h = height_Frac_Idx - height_idx;
             float del_w = width_Frac_Idx - width_idx;
             
-            img_op[i][j] = img_IP[height_idx][width_idx]*(1 - del_h)*(1-del_w) + img_IP[height_idx+1][width_idx]*(del_h)*(1-del_w) + img_IP[height_idx][width_idx+1]*(1 - del_h)*(del_w) +img_IP[height_idx+1][width_idx+1]*(del_h)*(del_w);
+            img_op[i][j] = (unsigned char)(img_IP[height_idx][width_idx]*(1 - del_h)*(1-del_w) + img_IP[height_idx+1][width_idx]*(del_h)*(1-del_w) + img_IP[height_idx][width_idx+1]*(1 - del_h)*(del_w) +img_IP[height_idx+1][width_idx+1]*(del_h)*(del_w));
+            
+            //printf("%d\n",img_op[height_idx][width_idx]);
+            
+            
+            
         }
+        
+        
     }
     
     
@@ -147,13 +156,13 @@ int main(int argc, const char * argv[])
     
     
     //Display the input image.
-    MagickDisplayImage(wand_op, ":0");
+    //MagickDisplayImage(wand_op, ":0");
     
     
     //MagickReadImage(wand_op, "/Users/SK_Mac/Downloads/image1.jpg");
     
     //Display the output image.
-    //MagickDisplayImage(wand_ip, ":0");
+    MagickDisplayImage(wand_op, ":0");
     
     for(int i= 1 ; i<10 ; i++)
     {
