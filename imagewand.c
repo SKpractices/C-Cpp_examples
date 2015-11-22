@@ -78,20 +78,19 @@ int main(int argc, const char * argv[])
     
     }
     
-    
-    height2 =  800;
-    width2 =   800;
+    height2 =  2500;
+    width2 =   2500;
     
     // Bilineat linterpolation. 
     
-    double img_op[height2][width2];
+    unsigned char img_op[height2][width2];
     
     float scale_h = (float) height1/(float)height2;
     //printf("Scale with Height is %f\n",scale_h);
     float scale_w = (float) width1/(float)width2;
     //printf("Scale with Width is %f\n",scale_w);
 
- 
+    
     
     for (int i = 0 ; i <height2 ; i++)
     {
@@ -107,7 +106,7 @@ int main(int argc, const char * argv[])
             //printf("%f\n",del_w);
             
 
-            img_op[i][j] = (img_IP[height_idx][width_idx])*(1.00 - del_h)*(1.00-del_w) + (img_IP[height_idx+1][width_idx])*(del_h)*(1.00-del_w) + (img_IP[height_idx][width_idx+1])*(1.00 - del_h)*(del_w) + (img_IP[height_idx+1][width_idx+1])*(del_h)*(del_w);
+            img_op[i][j] = (img_IP[height_idx][width_idx])*(1 - del_h)*(1-del_w) + (img_IP[height_idx+1][width_idx])*(del_h)*(1-del_w) + (img_IP[height_idx][width_idx+1])*(1 - del_h)*(del_w) + (img_IP[height_idx+1][width_idx+1])*(del_h)*(del_w);
             
             
             
@@ -147,8 +146,8 @@ int main(int argc, const char * argv[])
         for(j1=0;j1<width2;j1++)
         {
             //PixelSetColorFromWand(wand_op, pixel_op[j1]);
-            unsigned char temp = img_op[i1][j1];
-            sprintf(hex,"#%02x%02x%02x",temp,temp,temp);
+            //unsigned char temp = img_op[i1][j1];
+            sprintf(hex,"#%02x%02x%02x",img_op[i1][j1],img_op[i1][j1],img_op[i1][j1]);
             PixelSetColor(pixels_op[j1],hex);
         }
         // Sync writes the pixels back to the m_wand
@@ -160,29 +159,16 @@ int main(int argc, const char * argv[])
     
     
 
-
-    
-    
     //Display the input image.
-    //MagickDisplayImage(wand_op, ":0");
-    
-    
-    //MagickReadImage(wand_op, "/Users/SK_Mac/Downloads/image1.jpg");
+    //MagickDisplayImage(wand_ip, ":0");
     
     //Display the output image.
     MagickDisplayImage(wand_op, ":0");
-    
-    for(int i= 1 ; i<10 ; i++)
-    {
-        for(int j = 1; j<10; j++ )
-        {
-            //printf("%d \t", img_op[i][j]);
-            
-        }
-    }
+
     
     
     wand_ip = DestroyMagickWand(wand_ip);
+    wand_op = DestroyMagickWand(wand_op);
     MagickWandTerminus();
     return 0;
 }
