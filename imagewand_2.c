@@ -11,50 +11,37 @@
 #include <wand/MagickWand.h>// ImageMagick's C framework for image processing.
 #include <math.h>
 
+struct image{
+    unsigned char *gray_Data;
+    int height;
+    int width;
+};
 
-int main(int argc, const char * argv[])
+struct image get_Image(char name[])
 {
-    
-    
-    //unsigned long height2 = strtol(argv[1], NULL, 0);
-    //unsigned long width2 = strtol(argv[2], NULL, 0);
-    
-    unsigned long height2 = 300;
-    unsigned long width2 = 300;
+
     MagickWandGenesis();
-    
-    // Declearation of variables
-    // Wand variables
-
-    char hex[128];
-
     MagickBooleanType img_Check;
-    MagickWand *wand_ip, *wand_op;
+    MagickWand *wand_ip;
     
     wand_ip = NewMagickWand();
-    img_Check =  MagickReadImage(wand_ip, "/Users/SK_Mac/Downloads/image2.jpg");
-    //img_Check =  MagickReadImage(wand_ip,argv[3]);
-    
+    img_Check =  MagickReadImage(wand_ip, name);
     if(img_Check==MagickFalse)
     {
         printf("ERROR : - Image not found. ");
     }
-    
-    PixelIterator *iterator_op;
 
-    
-    // Normal variables
-    unsigned long height1,width1;
+    int height1,width1;
     
     
     // get the height and width
     
-    width1 =  MagickGetImageWidth(wand_ip);
+    width1 =  (int) MagickGetImageWidth(wand_ip);
     //printf("Width is %lu\n",width1);
     
-    height1 = MagickGetImageHeight(wand_ip);
+    height1 = (int) MagickGetImageHeight(wand_ip);
     //printf("Height is %lu",height1);
-
+    
     size_t total_gray_pixels =  height1*width1;
     
     
@@ -70,21 +57,69 @@ int main(int argc, const char * argv[])
                             blob);     // Destination pointer
     
     
-    unsigned char img_IP[height1][width1];
+
+    struct image image1 = {blob, height1, width1};
+
+    return image1;
+}
+
+
+
+
+
+
+
+
+
+
+int main(int argc, const char * argv[])
+{
     
-    for (int i = 0; i<height1 ; i++)
+    struct image get_Image(char []);
+    
+    char filename[] = "/Users/SK_Mac/Downloads/image4.jpg";
+    
+    struct image image_IP = get_Image(filename);
+    
+    
+    unsigned char img_IP[image_IP.height][image_IP.width];
+    
+    for (int i = 0; i<image_IP.height; i++)
     {
-        for (int j = 0; j<width1 ; j++)
+        for (int j = 0; j<image_IP.width; j++)
         {
-            img_IP[i][j] = (int) blob[i*(int)width1+j];
+            img_IP[i][j] = (int) image_IP.gray_Data[i*(int)image_IP.width+j];
         }
     }
     
-    free(blob);
+    
+    int height1 =image_IP.height;
+    int width1 = image_IP.width;
+    free(image_IP.gray_Data);
     
 
-    wand_ip = DestroyMagickWand(wand_ip);
-    // Bilineat linterpolation. 
+    //unsigned long height2 = strtol(argv[1], NULL, 0);
+    //unsigned long width2 = strtol(argv[2], NULL, 0);
+    
+    unsigned long height2 = 2000;
+    unsigned long width2 = 2000;
+    
+    MagickWandGenesis();
+    
+    // Declearation of variables
+    // Wand variables
+
+    char hex[128];
+
+    MagickWand *wand_op;
+
+    
+    PixelIterator *iterator_op;
+
+    
+    
+
+    // Bilineat linterpolation.
     
     unsigned char img_op[height2][width2];
     
