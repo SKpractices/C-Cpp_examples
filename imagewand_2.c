@@ -10,11 +10,14 @@
 #include <stdio.h>
 #include <wand/MagickWand.h>// ImageMagick's C framework for image processing.
 #include <math.h>
-#include <string.h>
 
 
 
-//image structure.
+/*image structure.
+    gray_Data = Pointer to store buffer of grayscale values.
+    height = Height of image.
+    width = Width of image.
+*/
 struct image{
     unsigned char *gray_Data;
     int height;
@@ -22,71 +25,85 @@ struct image{
 };
 
 
-//function to get image properties.;
+
+
+/*function to get image properties.
+    return type : struct image. 
+    name = Image fila name with path.
+*/
 struct image get_Image(char name[])
 {
 
     MagickWandGenesis();
     MagickBooleanType img_Check;
-    MagickWand *wand_ip;
     
+    // wand_ip = instance of image.
+    MagickWand *wand_ip;
     wand_ip = NewMagickWand();
     img_Check =  MagickReadImage(wand_ip, name);
     if(img_Check==MagickFalse)
     {
         printf("ERROR : - Image not found. ");
     }
+    
     int height1,width1;
-    // get the height and width
+    
+    // get the height and width(type cast ot int as it gives unsigned long as return type).
     width1 =  (int) MagickGetImageWidth(wand_ip);
-    //printf("Width is %lu\n",width1);
     height1 = (int) MagickGetImageHeight(wand_ip);
-    //printf("Height is %lu",height1);
+    
+    //Allocate space for gray scale values.
     size_t total_gray_pixels =  height1*width1;
-    unsigned char * blob = malloc(total_gray_pixels);
+    unsigned char * image_Buff = malloc(total_gray_pixels);
     
-    
-    MagickExportImagePixels(wand_ip,      // Image instance
+    //Read grayscale values ans store them into memory buffer.
+    MagickExportImagePixels(wand_ip,   // Image instance
                             0,         // Start X
                             0,         // Start Y
-                            width1,     // End X
-                            height1,    // End Y
+                            width1,    // End X
+                            height1,   // End Y
                             "I",       // Value where "I" = intensity = gray value
                             CharPixel, // Storage type where "unsigned char == (0 ~ 255)
-                            blob);     // Destination pointer
+                            image_Buff);     // Destination pointer
     
+    //Destroy image instance.
     wand_ip = DestroyMagickWand(wand_ip);
 
-    struct image image1 = {blob, height1, width1};
+    struct image image1 = {image_Buff, height1, width1};
     
     return image1;
 }
 
 
 
-// Main function.
+/* Main function.
+    It accepts three agruments from commandline. 
+    argv[1] = Height of output image.
+    argv[2] = Width of output image.
+    argv[3] = filename with path.
+ 
+    for example - 
+    ./main.o 1200 800 /Users/SK_Mac/Downloads/image3.jpg
+ */
+
 
 int main(int argc,  char * argv[])
 {
     
-    //declear function.
     struct image get_Image(char []);
-    //get file name
     
-    //char filename[] = "/Users/SK_Mac/Downloads/image4.jpg";
+    //get file name
     char *filename = argv[3];
     
     //Get image properties.
-    //struct image image_IP = get_Image(filename);
     struct image image_IP = get_Image(filename);
 
     
     int height1 =image_IP.height;
     int width1 = image_IP.width;
 
-    //Declear 2D matrix for input image.
+    //2D matrix for input image.
     unsigned char img_IP[height1][width1];
-    
     for (int i = 0; i<height1; i++)
     {
         for (int j = 0; j<width1; j++)
@@ -94,27 +111,34 @@ int main(int argc,  char * argv[])
             img_IP[i][j] = (int) image_IP.gray_Data[i*(int)width1+j];
         }
     }
-    
+
     free(image_IP.gray_Data);
 
     unsigned long height2 = strtol(argv[1], NULL, 0);
     unsigned long width2 = strtol(argv[2], NULL, 0);
     
+    
     //unsigned long height2 = 2500;
     //unsigned long width2 = 2000;
     
     
-    // Bilineat linterpolation.
     
-    unsigned char img_op[height2][width2];
+    // BILINEAR INTERPOLATION.
     
+    
+    //
+    unsigned char img_OP[height2][width2];
+    
+    //Get the scaling factors.
     float scale_h = height1/(float)height2;
     float scale_w = width1/(float)width2;
+    
     
     for (int i = 0 ; i <height2 ; i++)
     {
         for (int j = 0 ; j< width2 ; j++)
         {
+            
             float height_Frac_Idx = i*scale_h;
             float width_Frac_Idx = j*scale_w;
             int height_idx, width_idx;
@@ -122,16 +146,12 @@ int main(int argc,  char * argv[])
             width_idx =  (int) width_Frac_Idx;
             float del_h = height_Frac_Idx - height_idx;
             float del_w = width_Frac_Idx - width_idx;
+       
             
-            
-            if(height_idx>=height1 || width_idx>=width1)
-            {
-                height_idx = (int) height1-2;
-                width_idx = (int) width1-2;
-                
-            }
-
-            img_op[i][j] = ((img_IP[height_idx][width_idx])*(1 - del_h)*(1-del_w)) + ((img_IP[height_idx+1][width_idx])*(del_h)*(1-del_w)) + ((img_IP[height_idx][width_idx+1])*(1 - del_h)*(del_w)) + ((img_IP[height_idx+1][width_idx+1])*(del_h)*(del_w));
+            img_OP[i][j] = ((img_IP[height_idx][width_idx])     *   (1 - del_h)   *   (1-del_w))    +
+                           ((img_IP[height_idx+1][width_idx])   *   (del_h)       *   (1-del_w))    +
+                           ((img_IP[height_idx][width_idx+1])   *   (1 - del_h)   *   (del_w))      +
+                           ((img_IP[height_idx+1][width_idx+1]) *   (del_h)       *   (del_w));
             
         }
         
@@ -139,19 +159,16 @@ int main(int argc,  char * argv[])
     }
     
     
-    // Initialize the wand for final image based one the given height and width.
     
     //Initialize the wand for output window.
     
     MagickWandGenesis();
     
-    // Declearation of variables
     // Wand variables
-    
     char hex[128];
     MagickWand *wand_op;
-    PixelIterator *iterator_op;
     wand_op = NewMagickWand();
+    PixelIterator *iterator_op;
     PixelWand *p_wand = NULL;
     p_wand = NewPixelWand();
     //Set the initial color, it is necessary in MagicWand to have it.
@@ -167,22 +184,21 @@ int main(int argc,  char * argv[])
         // Set the row of wands to a simple gray scale gradient
         for(int j=0;j<width2;j++)
         {
-            //PixelSetColorFromWand(wand_op, pixel_op[j1]);
-            //unsigned char temp = img_op[i1][j1];
-            sprintf(hex,"#%02x%02x%02x",img_op[i][j],img_op[i][j],img_op[i][j]);
+            /*formating RGB values to hex, as these are gray scale values so assgning R,G,B same values.
+             It is the way MagicWand render an image.
+             */
+            sprintf(hex,"#%02x%02x%02x",img_OP[i][j],img_OP[i][j],img_OP[i][j]);
             PixelSetColor(pixels_op[j],hex);
         }
         // Sync writes the pixels back to the m_wand
         PixelSyncIterator(iterator_op);
     }
     
-    MagickWriteImage(wand_op,"bits_demo.gif");
-    //Display the input image.
-    //MagickDisplayImage(wand_ip, ":0");
-    
+    MagickWriteImage(wand_op,"$HOME/Desktop/scaled.jpg");
     //Display the output image.
     MagickDisplayImage(wand_op, ":0");
-    //wand_ip = DestroyMagickWand(wand_ip);
+    
+    //Destroy the image instance.
     wand_op = DestroyMagickWand(wand_op);
     MagickWandTerminus();
     return 0;
