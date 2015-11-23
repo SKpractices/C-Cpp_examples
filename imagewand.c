@@ -14,8 +14,11 @@
 
 int main(int argc, const char * argv[])
 {
-    MagickWandGenesis();
     
+    
+    unsigned long height2 = strtol(argv[1], NULL, 0);
+    unsigned long width2 = strtol(argv[2], NULL, 0);
+    MagickWandGenesis();
     
     // Declearation of variables
     // Wand variables
@@ -27,10 +30,8 @@ int main(int argc, const char * argv[])
     char hex[128];
 
     
-    
-    
     // Normal variables
-    unsigned long height1,width1,height2,width2;
+    unsigned long height1,width1;
     
     
     // Initialiazation of variables.
@@ -38,7 +39,8 @@ int main(int argc, const char * argv[])
     pwand_ip = NewPixelWand();
     
     // Read image and check its existance.
-    img_Check =  MagickReadImage(wand_ip, "/Users/SK_Mac/Downloads/image2.jpg");
+    //img_Check =  MagickReadImage(wand_ip, "/Users/SK_Mac/Downloads/image2.jpg");
+    img_Check =  MagickReadImage(wand_ip,argv[3]);
     
     if(img_Check==MagickFalse)
     {
@@ -60,8 +62,8 @@ int main(int argc, const char * argv[])
     height1 = MagickGetImageHeight(wand_ip);
     //printf("Height is %lu",height1);
 
-    height2 =  2000;
-    width2 =   1750;
+    //height2 =  1000;
+    //width2 =   1750;
     
     unsigned char img_IP[height1][width1];
     for (int i=0 ; i<height1;i++)
@@ -78,7 +80,7 @@ int main(int argc, const char * argv[])
     }
     
 
-    
+    wand_ip = DestroyMagickWand(wand_ip);
     // Bilineat linterpolation. 
     
     unsigned char img_op[height2][width2];
@@ -99,8 +101,16 @@ int main(int argc, const char * argv[])
             width_idx =  (int) width_Frac_Idx;
             float del_h = height_Frac_Idx - height_idx;
             float del_w = width_Frac_Idx - width_idx;
+            
+            
+            if(height_idx>=height1 || width_idx>=width1)
+            {
+                height_idx = (int) height1-2;
+                width_idx = (int) width1-2;
+                
+            }
 
-            img_op[i][j] = (img_IP[height_idx][width_idx])*(1 - del_h)*(1-del_w) + (img_IP[height_idx+1][width_idx])*(del_h)*(1-del_w) + (img_IP[height_idx][width_idx+1])*(1 - del_h)*(del_w) + (img_IP[height_idx+1][width_idx+1])*(del_h)*(del_w);
+            img_op[i][j] = ((img_IP[height_idx][width_idx])*(1 - del_h)*(1-del_w)) + ((img_IP[height_idx+1][width_idx])*(del_h)*(1-del_w)) + ((img_IP[height_idx][width_idx+1])*(1 - del_h)*(del_w)) + ((img_IP[height_idx+1][width_idx+1])*(del_h)*(del_w));
             
         }
         
@@ -147,7 +157,7 @@ int main(int argc, const char * argv[])
     
     //Display the output image.
     MagickDisplayImage(wand_op, ":0");
-    wand_ip = DestroyMagickWand(wand_ip);
+    //wand_ip = DestroyMagickWand(wand_ip);
     wand_op = DestroyMagickWand(wand_op);
     MagickWandTerminus();
     return 0;
