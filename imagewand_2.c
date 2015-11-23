@@ -10,13 +10,19 @@
 #include <stdio.h>
 #include <wand/MagickWand.h>// ImageMagick's C framework for image processing.
 #include <math.h>
+#include <string.h>
 
+
+
+//image structure.
 struct image{
     unsigned char *gray_Data;
     int height;
     int width;
 };
 
+
+//function to get image properties.;
 struct image get_Image(char name[])
 {
 
@@ -30,22 +36,15 @@ struct image get_Image(char name[])
     {
         printf("ERROR : - Image not found. ");
     }
-
     int height1,width1;
-    
-    
     // get the height and width
-    
     width1 =  (int) MagickGetImageWidth(wand_ip);
     //printf("Width is %lu\n",width1);
-    
     height1 = (int) MagickGetImageHeight(wand_ip);
     //printf("Height is %lu",height1);
-    
     size_t total_gray_pixels =  height1*width1;
-    
-    
     unsigned char * blob = malloc(total_gray_pixels);
+    
     
     MagickExportImagePixels(wand_ip,      // Image instance
                             0,         // Start X
@@ -56,77 +55,61 @@ struct image get_Image(char name[])
                             CharPixel, // Storage type where "unsigned char == (0 ~ 255)
                             blob);     // Destination pointer
     
-    
+    wand_ip = DestroyMagickWand(wand_ip);
 
     struct image image1 = {blob, height1, width1};
-
+    
     return image1;
 }
 
 
 
+// Main function.
 
-
-
-
-
-
-
-int main(int argc, const char * argv[])
+int main(int argc,  char * argv[])
 {
     
+    //declear function.
     struct image get_Image(char []);
+    //get file name
     
-    char filename[] = "/Users/SK_Mac/Downloads/image4.jpg";
+    //char filename[] = "/Users/SK_Mac/Downloads/image4.jpg";
+    char *filename = argv[3];
     
+    //Get image properties.
+    //struct image image_IP = get_Image(filename);
     struct image image_IP = get_Image(filename);
-    
-    
-    unsigned char img_IP[image_IP.height][image_IP.width];
-    
-    for (int i = 0; i<image_IP.height; i++)
-    {
-        for (int j = 0; j<image_IP.width; j++)
-        {
-            img_IP[i][j] = (int) image_IP.gray_Data[i*(int)image_IP.width+j];
-        }
-    }
-    
+
     
     int height1 =image_IP.height;
     int width1 = image_IP.width;
+
+    //Declear 2D matrix for input image.
+    unsigned char img_IP[height1][width1];
+    
+    for (int i = 0; i<height1; i++)
+    {
+        for (int j = 0; j<width1; j++)
+        {
+            img_IP[i][j] = (int) image_IP.gray_Data[i*(int)width1+j];
+        }
+    }
+    
     free(image_IP.gray_Data);
-    
 
-    //unsigned long height2 = strtol(argv[1], NULL, 0);
-    //unsigned long width2 = strtol(argv[2], NULL, 0);
+    unsigned long height2 = strtol(argv[1], NULL, 0);
+    unsigned long width2 = strtol(argv[2], NULL, 0);
     
-    unsigned long height2 = 2000;
-    unsigned long width2 = 2000;
-    
-    MagickWandGenesis();
-    
-    // Declearation of variables
-    // Wand variables
-
-    char hex[128];
-
-    MagickWand *wand_op;
-
-    
-    PixelIterator *iterator_op;
-
+    //unsigned long height2 = 2500;
+    //unsigned long width2 = 2000;
     
     
-
     // Bilineat linterpolation.
     
     unsigned char img_op[height2][width2];
     
     float scale_h = height1/(float)height2;
     float scale_w = width1/(float)width2;
-
-    
     
     for (int i = 0 ; i <height2 ; i++)
     {
@@ -159,14 +142,20 @@ int main(int argc, const char * argv[])
     // Initialize the wand for final image based one the given height and width.
     
     //Initialize the wand for output window.
-    wand_op = NewMagickWand();
     
+    MagickWandGenesis();
+    
+    // Declearation of variables
+    // Wand variables
+    
+    char hex[128];
+    MagickWand *wand_op;
+    PixelIterator *iterator_op;
+    wand_op = NewMagickWand();
     PixelWand *p_wand = NULL;
     p_wand = NewPixelWand();
-    
     //Set the initial color, it is necessary in MagicWand to have it.
     PixelSetColor(p_wand,"white");
-    
     //Configure the output image wand.
     MagickNewImage(wand_op,width2,height2,p_wand);
     iterator_op=NewPixelIterator(wand_op);
@@ -186,8 +175,6 @@ int main(int argc, const char * argv[])
         // Sync writes the pixels back to the m_wand
         PixelSyncIterator(iterator_op);
     }
-    
-    
     
     MagickWriteImage(wand_op,"bits_demo.gif");
     //Display the input image.
