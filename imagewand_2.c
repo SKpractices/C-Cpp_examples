@@ -9,7 +9,7 @@
 
 #include <stdio.h>
 #include <wand/MagickWand.h>// ImageMagick's C framework for image processing.
-#include <math.h>
+#include <time.h>
 
 
 
@@ -36,11 +36,9 @@ struct image get_Image(char name[])
 
     MagickWandGenesis();
     MagickBooleanType img_Check;
-    
-    // wand_ip = instance of image.
-    MagickWand *wand_ip;
+    MagickWand *wand_ip; // wand_ip = instance of image.
     wand_ip = NewMagickWand();
-    img_Check =  MagickReadImage(wand_ip, name);
+    img_Check =  MagickReadImage(wand_ip, name); // Read image as command line arguments.
     if(img_Check==MagickFalse)
     {
         printf("ERROR : - Image not found. ");
@@ -68,6 +66,7 @@ struct image get_Image(char name[])
     
     //Destroy image instance.
     wand_ip = DestroyMagickWand(wand_ip);
+    MagickWandTerminus();
 
     struct image image1 = {image_Buff, height1, width1};
     
@@ -89,6 +88,8 @@ struct image get_Image(char name[])
 
 int main(int argc,  char * argv[])
 {
+    clock_t time_Log;
+    time_Log = clock();
     
     struct image get_Image(char []);
     
@@ -124,9 +125,8 @@ int main(int argc,  char * argv[])
     
     
     // BILINEAR INTERPOLATION.
+    // Proper explanation about the algorithm is avaiable in the documentation.
     
-    
-    //
     unsigned char img_OP[height2][width2];
     
     //Get the scaling factors.
@@ -147,7 +147,6 @@ int main(int argc,  char * argv[])
             float del_h = height_Frac_Idx - height_idx;
             float del_w = width_Frac_Idx - width_idx;
        
-            
             img_OP[i][j] = ((img_IP[height_idx][width_idx])     *   (1 - del_h)   *   (1-del_w))    +
                            ((img_IP[height_idx+1][width_idx])   *   (del_h)       *   (1-del_w))    +
                            ((img_IP[height_idx][width_idx+1])   *   (1 - del_h)   *   (del_w))      +
@@ -163,9 +162,8 @@ int main(int argc,  char * argv[])
     //Initialize the wand for output window.
     
     MagickWandGenesis();
-    
     // Wand variables
-    char hex[128];
+    char hex[8];
     MagickWand *wand_op;
     wand_op = NewMagickWand();
     PixelIterator *iterator_op;
@@ -194,7 +192,12 @@ int main(int argc,  char * argv[])
         PixelSyncIterator(iterator_op);
     }
     
-    MagickWriteImage(wand_op,"$HOME/Desktop/scaled.jpg");
+    //MagickWriteImage(wand_op,"$HOME/Desktop/scaled.jpg");
+    //get the processing time.
+    time_Log = clock() - time_Log;
+    double time_taken = ((double)time_Log)/CLOCKS_PER_SEC; // in seconds
+    printf("took %f seconds to execute \n", time_taken);
+
     //Display the output image.
     MagickDisplayImage(wand_op, ":0");
     
