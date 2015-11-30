@@ -14,24 +14,22 @@
 
 // Deifne macros for fixed point conversion
 
-#define SCALE 16
-#define Float2Fixed(x) (x (float)(1<<SCALE)) 
-#define Fixed2Float(x) (x(float)/(float)(1<<SCALE))
-
-
 /*image structure.
     gray_Data = Pointer to store buffer of grayscale values.
     height = Height of image.
     width = Width of image.
 */
+
+
+
+
+
 struct image
 {
     unsigned char *gray_Data;
     int height;
     int width;
 };
-
-
 
 
 /*function to get image properties.
@@ -46,6 +44,7 @@ struct image get_Image(char name[])
     MagickWand *wand_ip; // wand_ip = instance of image.
     wand_ip = NewMagickWand();
     img_Check =  MagickReadImage(wand_ip, name); // Read image as command line arguments.
+    
     if(img_Check==MagickFalse)
     {
         printf("ERROR : - Image not found. ");
@@ -68,7 +67,7 @@ struct image get_Image(char name[])
                             width1,    // End X
                             height1,   // End Y
                             "I",       // Value where "I" = intensity = gray value
-                            CharPixel, // Storage type where "unsigned char == (0 ~ 255)
+                            CharPixel, // Storage type where "int == (0 ~ 255)
                             image_Buff);     // Destination pointer
     
     //Destroy image instance.
@@ -80,10 +79,9 @@ struct image get_Image(char name[])
     return image1;
 }
 
-
-
 struct image biLinearInterPolate(struct image img1, int h2, int w2)
 {
+    
     struct image img2;
     img2.gray_Data = (unsigned char *)malloc(h2*w2*sizeof(unsigned char));
     img2.height = h2;
@@ -108,18 +106,17 @@ struct image biLinearInterPolate(struct image img1, int h2, int w2)
     
             
             float del_h = height_Frac_Idx - height_idx;
-            float del_w = width_Frac_Idx - width_idx;
+            float del_w = width_Frac_Idx- width_idx;
             float del_h1 = 1.0f - del_h;
             float del_w1 = 1.0f - del_w;
-        
-   
-            int f1 = del_h1*del_w1*256.0f;
-            int f2 = del_w*del_h1*256.0f;
-            int f3 = del_h*del_w1*256.0f;
-            int f4 = del_h*del_w*256.0f;
+ 
+            int f1 = (del_h1)*(del_w1)*256.0f;
+            int f2 = (del_h)*(del_w1)*256.0f;
+            int f3 = (del_h1)*(del_w)*256.0f;
+            int f4 = (del_w)*(del_h)*256.0f;
             
             
-            img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4)>>8;
+            img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4);
         }
     }
 
