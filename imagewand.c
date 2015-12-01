@@ -116,7 +116,7 @@ struct image biLinearInterPolate(struct image img1, int h2, int w2)
             int f4 = (del_w)*(del_h)*256.0f;
             
             
-            img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4);
+            img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4)>>8;
         }
     }
 
