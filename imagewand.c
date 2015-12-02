@@ -15,10 +15,10 @@
 // Deifne macros for fixed point conversion
 
 /*image structure.
-    gray_Data = Pointer to store buffer of grayscale values.
-    height = Height of image.
-    width = Width of image.
-*/
+ gray_Data = Pointer to store buffer of grayscale values.
+ height = Height of image.
+ width = Width of image.
+ */
 
 
 
@@ -33,12 +33,12 @@ struct image
 
 
 /*function to get image properties.
-    return type : struct image. 
-    name = Image fila name with path.
-*/
+ return type : struct image.
+ name = Image fila name with path.
+ */
 struct image get_Image(char name[])
 {
-
+    
     MagickWandGenesis();
     MagickBooleanType img_Check;
     MagickWand *wand_ip; // wand_ip = instance of image.
@@ -59,6 +59,8 @@ struct image get_Image(char name[])
     //Allocate space for gray scale values.
     size_t total_gray_pixels =  height1*width1;
     unsigned char * image_Buff = (unsigned char *)malloc(total_gray_pixels*sizeof(unsigned char));
+    //perror("memory allocation failure");
+    //exit(EXIT_FAILURE);
     
     //Read grayscale values ans store them into memory buffer.
     MagickExportImagePixels(wand_ip,   // Image instance
@@ -73,7 +75,7 @@ struct image get_Image(char name[])
     //Destroy image instance.
     wand_ip = DestroyMagickWand(wand_ip);
     MagickWandTerminus();
-
+    
     struct image image1 = {image_Buff, height1, width1};
     
     return image1;
@@ -86,52 +88,57 @@ struct image biLinearInterPolate(struct image img1, int h2, int w2)
     img2.gray_Data = (unsigned char *)malloc(h2*w2*sizeof(unsigned char));
     img2.height = h2;
     img2.width = w2;
+    unsigned char p1,p2,p3,p4;
+    float del_h,del_h1,del_w,del_w1;
+    float height_Frac_Idx,width_Frac_Idx;
+    int f1,f2,f3,f4,height_idx,width_idx;
     
     for (int i = 0; i<h2; i++)
     {
+        height_Frac_Idx = ((i*img1.height)/(float)h2);
+        height_idx = (int) height_Frac_Idx;
+        del_h = height_Frac_Idx - height_idx;
+        del_h1 = 1.0f - del_h;
+
         for (int j=0;j<w2;j++)
         {
+            width_Frac_Idx =  ((j*img1.width)/(float)w2);
             
-            float height_Frac_Idx = ((i*img1.height)/(float)h2);
-            float width_Frac_Idx =  ((j*img1.width)/(float)w2);
-
-            int height_idx = (int) height_Frac_Idx;
-            int width_idx =  (int) width_Frac_Idx;
-        
+            width_idx =  (int) width_Frac_Idx;
             
-            unsigned char p1 = img1.gray_Data[((height_idx*img1.width)+width_idx)];
-            unsigned char p2 = img1.gray_Data[((height_idx+1)*img1.width)+width_idx];
-            unsigned char p3 = img1.gray_Data[(height_idx*img1.width)+(width_idx+1)];
-            unsigned char p4 = img1.gray_Data[((height_idx+1)*img1.width)+(width_idx+1)];
-    
             
-            float del_h = height_Frac_Idx - height_idx;
-            float del_w = width_Frac_Idx- width_idx;
-            float del_h1 = 1.0f - del_h;
-            float del_w1 = 1.0f - del_w;
- 
-            int f1 = (del_h1)*(del_w1)*256.0f;
-            int f2 = (del_h)*(del_w1)*256.0f;
-            int f3 = (del_h1)*(del_w)*256.0f;
-            int f4 = (del_w)*(del_h)*256.0f;
+            p1 = img1.gray_Data[((height_idx*img1.width)+width_idx)];
+            p2 = img1.gray_Data[((height_idx+1)*img1.width)+width_idx];
+            p3 = img1.gray_Data[(height_idx*img1.width)+(width_idx+1)];
+            p4 = img1.gray_Data[((height_idx+1)*img1.width)+(width_idx+1)];
+            
+            
+            
+            del_w = width_Frac_Idx- width_idx;
+            del_w1 = 1.0f - del_w;
+            
+            f1 = (del_h1)*(del_w1)*256.0f;
+            f2 = (del_h)*(del_w1)*256.0f;
+            f3 = (del_h1)*(del_w)*256.0f;
+            f4 = (del_w)*(del_h)*256.0f;
             
             
             img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4)>>8;
         }
     }
-
+    
     return img2;
 }
 
 
 /* Main function.
-    It accepts three agruments from commandline. 
-    argv[1] = Height of output image.
-    argv[2] = Width of output image.
-    argv[3] = filename with path.
+ It accepts three agruments from commandline.
+ argv[1] = Height of output image.
+ argv[2] = Width of output image.
+ argv[3] = filename with path.
  
-    for example - 
-    ./main.o 1200 800 /Users/SK_Mac/Downloads/image3.jpg
+ for example -
+ ./main.o 1200 800 /Users/SK_Mac/Downloads/image3.jpg
  */
 
 
@@ -141,19 +148,20 @@ int main(int argc,  char * argv[])
     time_Log = clock();
     
     struct image get_Image(char []);
-    struct image biLinearInterPolate(struct image img_ran,int h_ran, int w_ran);
     
+    struct image biLinearInterPolate(struct image img_ran,int h_ran, int w_ran);
+
     //get file name
     char *filename = argv[3];
     //Get image properties.
     struct image image_IP = get_Image(filename);
-
+    
     int height2 = (int) strtol(argv[1], NULL, 0);
     int width2 = (int) strtol(argv[2], NULL, 0);
     
     
     struct image img_OP = biLinearInterPolate(image_IP, height2, width2);
-  
+    
     //Initialize the wand for output window.
     
     MagickWandGenesis();
@@ -194,7 +202,7 @@ int main(int argc,  char * argv[])
     time_Log = clock() - time_Log;
     double time_taken = ((double)time_Log)/CLOCKS_PER_SEC; // in seconds
     printf("took %f seconds to execute \n", time_taken);
-
+    
     //Display the output image.
     MagickDisplayImage(wand_op, ":0");
     
@@ -203,16 +211,6 @@ int main(int argc,  char * argv[])
     MagickWandTerminus();
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
