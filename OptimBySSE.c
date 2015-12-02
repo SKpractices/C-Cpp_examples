@@ -114,36 +114,37 @@ struct image biLinearInterPolateSSE(struct image img1, int h2, int w2)
     for (int i = 0; i<h2; i++)
     {
         
-        // OPERATION -1
+        float temp_frac = ((i*img1.height)/(float)h2);
+        int temp_height_idx = (int) temp_frac;
+
+        
         for (int k=0; k<4;k++){
-            height_Frac_Idx[k] = ((i*img1.height)/(float)h2);
+            height_Frac_Idx[k] = temp_frac;
+            height_idx[k] = temp_height_idx;
+            del_h[k] = height_Frac_Idx[k] - height_idx[k];
+            del_h1[k] = 1.0f - del_h[k];
         }
-        
-        
         for (int j=0;j<w2;j+=4)
         {
             
             for (int k=0;k<4;k++){
             width_Frac_Idx[k] =  (((j+k)*img1.width)/(float)w2);
-            height_idx[k] = (int) height_Frac_Idx[k];
             width_idx[k] =  (int) width_Frac_Idx[k];
             
-                // OPERATION : 3.1-3.10
+            // OPERATION : 3.1-3.10
             p1[k] = img1.gray_Data[((height_idx[k]*img1.width)+width_idx[k])];
             p2[k] = img1.gray_Data[((height_idx[k]+1)*img1.width)+width_idx[k]];
             p3[k] = img1.gray_Data[(height_idx[k]*img1.width)+(width_idx[k]+1)];
             p4[k] = img1.gray_Data[((height_idx[k]+1)*img1.width)+(width_idx[k]+1)];
         
-            del_h[k] = height_Frac_Idx[k] - height_idx[k];
             del_w[k] = width_Frac_Idx[k]- width_idx[k];
-            del_h1[k] = 1.0f - del_h[k];
             del_w1[k] = 1.0f - del_w[k];
                 
             }
             
             //unsigned char* iteratPointer = _mm_malloc(sizeof(unsigned char)*4,4);
             
-            __m128i weightSet1,weightSet2, sseResults;
+            __m128 weightSet1,weightSet2, sseResults;
             weightSet1 = _mm_loadu_ps(&del_h1[0]);
             weightSet2 = _mm_loadu_ps(&del_w1[0]);
             sseResults = _mm_mul_ps(weightSet1, weightSet2);
@@ -175,7 +176,6 @@ struct image biLinearInterPolateSSE(struct image img1, int h2, int w2)
                 weight4[k] = f4[k]*256.0f;
                 
                 
-                
                 img2.gray_Data[i*w2+(j+k)] = (p1[k]*weight1[k] + p2[k]*weight2[k] + p3[k]*weight3[k] + p4[k]*weight4[k])>>8;
 
                 
@@ -197,53 +197,6 @@ struct image biLinearInterPolateSSE(struct image img1, int h2, int w2)
 
 
 
-
-// Bilinear interpolation with normal C
-struct image biLinearInterPolate(struct image img1, int h2, int w2)
-{
-    
-    struct image img2;
-    img2.gray_Data = (unsigned char *)malloc(h2*w2*sizeof(unsigned char));
-    img2.height = h2;
-    img2.width = w2;
-    
-    for (int i = 0; i<h2; i++)
-    {
-        for (int j=0;j<w2;j++)
-        {
-            
-            float height_Frac_Idx = ((i*img1.height)/(float)h2);
-            float width_Frac_Idx =  ((j*img1.width)/(float)w2);
-            
-            int height_idx = (int) height_Frac_Idx;
-            int width_idx =  (int) width_Frac_Idx;
-            
-            
-            unsigned char p1 = img1.gray_Data[((height_idx*img1.width)+width_idx)];
-            unsigned char p2 = img1.gray_Data[((height_idx+1)*img1.width)+width_idx];
-            unsigned char p3 = img1.gray_Data[(height_idx*img1.width)+(width_idx+1)];
-            unsigned char p4 = img1.gray_Data[((height_idx+1)*img1.width)+(width_idx+1)];
-            
-            
-            float del_h = height_Frac_Idx - height_idx;
-            float del_w = width_Frac_Idx- width_idx;
-            float del_h1 = 1.0f - del_h;
-            float del_w1 = 1.0f - del_w;
-            
-            int f1 = (del_h1)*(del_w1)*256.0f;
-            int f2 = (del_h)*(del_w1)*256.0f;
-            int f3 = (del_h1)*(del_w)*256.0f;
-            int f4 = (del_w)*(del_h)*256.0f;
-            
-            
-            img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4)>>8;
-        }
-    }
-    
-    return img2;
-}
-
-
 /* Main function.
  It accepts three agruments from commandline.
  argv[1] = Height of output image.
@@ -258,12 +211,10 @@ struct image biLinearInterPolate(struct image img1, int h2, int w2)
 int main(int argc,  char * argv[])
 {
     clock_t time_Log;
-    time_Log = clock();
+    //time_Log = clock();
     
     struct image get_Image(char []);
     
-    struct image biLinearInterPolate(struct image img_ran,int h_ran, int w_ran);
-
     struct image biLinearInterPolateSSE(struct image img1, int h2, int w2);
 
     
@@ -274,9 +225,14 @@ int main(int argc,  char * argv[])
     
     int height2 = (int) strtol(argv[1], NULL, 0);
     int width2 = (int) strtol(argv[2], NULL, 0);
+    time_Log = clock();
+
+    
+    struct image img_OP = biLinearInterPolateSSE(image_IP, height2, width2);
     
     
-    struct image img_OP = biLinearInterPolate(image_IP, height2, width2);
+    time_Log = clock() - time_Log;
+
     
     //Initialize the wand for output window.
     
@@ -315,7 +271,7 @@ int main(int argc,  char * argv[])
     
     //MagickWriteImage(wand_op,"$HOME/Desktop/scaled.jpg");
     //get the processing time.
-    time_Log = clock() - time_Log;
+    //time_Log = clock() - time_Log;
     double time_taken = ((double)time_Log)/CLOCKS_PER_SEC; // in seconds
     printf("took %f seconds to execute \n", time_taken);
     
