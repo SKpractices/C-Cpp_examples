@@ -2,32 +2,26 @@
 //  main.c
 //  testing
 //
-//  Created by Sourabh Kulhare on 11/22/15.
+//  Created by Sourabh Kulhare on 11/21/15.
 //  Copyright © 2015 Sourabh Kulhare. All rights reserved.
 //
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <wand/MagickWand.h>// ImageMagick's C framework for image processing.
 #include <time.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <malloc/malloc.h>
 #include <immintrin.h>
 
-
-
-// Deifne macros for fixed point conversion
+#define quant(x) (unsigned char)(x*256.0f)
+#define minusOne(x) (1.0f - x)
 
 /*image structure.
  gray_Data = Pointer to store buffer of grayscale values.
  height = Height of image.
  width = Width of image.
  */
-
-
-
-
-
 struct image
 {
     unsigned char *gray_Data;
@@ -37,9 +31,11 @@ struct image
 
 
 /*function to get image properties.
- return type : struct image.
- name = Image fila name with path.
+        return type : struct image.
+        name = Image fila name with path.
  */
+
+
 struct image get_Image(char name[])
 {
     
@@ -63,6 +59,8 @@ struct image get_Image(char name[])
     //Allocate space for gray scale values.
     size_t total_gray_pixels =  height1*width1;
     unsigned char * image_Buff = (unsigned char *)malloc(total_gray_pixels*sizeof(unsigned char));
+    //perror("memory allocation failure");
+    //exit(EXIT_FAILURE);
     
     //Read grayscale values ans store them into memory buffer.
     MagickExportImagePixels(wand_ip,   // Image instance
@@ -83,118 +81,106 @@ struct image get_Image(char name[])
     return image1;
 }
 
-// Bilinear interpolation with SSE-2 implementation. 
+
 
 struct image biLinearInterPolateSSE(struct image img1, int h2, int w2)
 {
     
+    
     struct image img2;
+    
     img2.gray_Data = (unsigned char *)malloc(h2*w2*sizeof(unsigned char));
-
-    
-    int temp_count = 0;
-    float height_Frac_Idx[4];
-    float width_Frac_Idx[4];
-    int height_idx[4], width_idx[4];
-    unsigned char p1[4],p2[4],p3[4],p4[4];
-    float del_h[4],del_h1[4],del_w[4],del_w1[4];
-    float f1[4],f2[4],f3[4],f4[4];
-    int weight1[4], weight2[4],weight3[4],weight4[4];
-    
     
     if(w2%4!=0)
     {
         int temp;
-        temp = w2/4;
+        temp = (int)(w2>>2);
         w2 = temp*4;
-        
+    }
+
+    unsigned char p1[4],p2[4],p3[4],p4[4];
+    float del_h[4],del_h1[4],del_w[4],del_w1[4],f1[4],f2[4],f3[4],f4[4];
+    register float height_Frac_Idx,width_Frac_Idx[4];
+    register int height_idx,width_idx[4];
+    
+    __m128 set1,set2,set3,setResults1,setResults2;
+    
+    
+    float* ones = _mm_malloc(sizeof(float)*4, 4);
+    for(int i = 0 ; i<4 ; i++)
+    {
+        ones[i] = 1.0f;
     }
     
-    
+    set3 = _mm_loadu_ps(&ones[0]);
+
     for (int i = 0; i<h2; i++)
     {
-        
-        float temp_frac = ((i*img1.height)/(float)h2);
-        int temp_height_idx = (int) temp_frac;
 
+        height_Frac_Idx = ((i*img1.height)*(1.0/h2));
+        height_idx = (int) height_Frac_Idx;
         
-        for (int k=0; k<4;k++){
-            height_Frac_Idx[k] = temp_frac;
-            height_idx[k] = temp_height_idx;
-            del_h[k] = height_Frac_Idx[k] - height_idx[k];
-            del_h1[k] = 1.0f - del_h[k];
+        for(int l = 0; l<4 ; l++)
+        {
+        del_h[l] = height_Frac_Idx - height_idx;
+        del_h1[l] = minusOne(del_h[l]);
         }
+        
         for (int j=0;j<w2;j+=4)
         {
-            
-            for (int k=0;k<4;k++){
-            width_Frac_Idx[k] =  (((j+k)*img1.width)/(float)w2);
-            width_idx[k] =  (int) width_Frac_Idx[k];
-            
-            // OPERATION : 3.1-3.10
-            p1[k] = img1.gray_Data[((height_idx[k]*img1.width)+width_idx[k])];
-            p2[k] = img1.gray_Data[((height_idx[k]+1)*img1.width)+width_idx[k]];
-            p3[k] = img1.gray_Data[(height_idx[k]*img1.width)+(width_idx[k]+1)];
-            p4[k] = img1.gray_Data[((height_idx[k]+1)*img1.width)+(width_idx[k]+1)];
-        
-            del_w[k] = width_Frac_Idx[k]- width_idx[k];
-            del_w1[k] = 1.0f - del_w[k];
-                
-            }
-            
-            //unsigned char* iteratPointer = _mm_malloc(sizeof(unsigned char)*4,4);
-            
-            __m128 weightSet1,weightSet2, sseResults;
-            weightSet1 = _mm_loadu_ps(&del_h1[0]);
-            weightSet2 = _mm_loadu_ps(&del_w1[0]);
-            sseResults = _mm_mul_ps(weightSet1, weightSet2);
-            _mm_store_ps(&f1[0],sseResults);
-            
-            
-            weightSet1 = _mm_loadu_ps(&del_h[0]);
-            weightSet2 = _mm_loadu_ps(&del_w1[0]);
-            sseResults = _mm_mul_ps(weightSet1, weightSet2);
-            _mm_store_ps(&f2[0],sseResults);
-
-            
-            weightSet1 = _mm_loadu_ps(&del_h1[0]);
-            weightSet2 = _mm_loadu_ps(&del_w[0]);
-            sseResults = _mm_mul_ps(weightSet1, weightSet2);
-            _mm_store_ps(&f3[0],sseResults);
-
-            
-            weightSet1 = _mm_loadu_ps(&del_h[0]);
-            weightSet2 = _mm_loadu_ps(&del_w[0]);
-            sseResults = _mm_mul_ps(weightSet1, weightSet2);
-            _mm_store_ps(&f4[0],sseResults);
-            
-            for (int k=0; k<4 ; k++)
+            for(int k=0 ; k<4 ;k++)
             {
-                weight1[k] = f1[k]*256.0f;
-                weight2[k] = f2[k]*256.0f;
-                weight3[k] = f3[k]*256.0f;
-                weight4[k] = f4[k]*256.0f;
                 
+            width_Frac_Idx[k] =  (((j+k)*img1.width)*(1.0/(w2)));
+            width_idx[k] =  (int) width_Frac_Idx[k];
                 
-                img2.gray_Data[i*w2+(j+k)] = (p1[k]*weight1[k] + p2[k]*weight2[k] + p3[k]*weight3[k] + p4[k]*weight4[k])>>8;
-
-                
+            p1[k] = img1.gray_Data[((height_idx*img1.width)+width_idx[k])];
+            p2[k] = img1.gray_Data[((height_idx+1)*img1.width)+width_idx[k]];
+            p3[k] = img1.gray_Data[(height_idx*img1.width)+(width_idx[k]+1)];
+            p4[k] = img1.gray_Data[((height_idx+1)*img1.width)+(width_idx[k]+1)];
+            del_w[k] = width_Frac_Idx[k]- width_idx[k];
             }
             
-            //THIS IS THE PART TO USE SSE
+            set2 = _mm_loadu_ps(&del_w[0]);
+            //Calculate del_w1
+            setResults1 = _mm_sub_ps(set3,set2);
+            //get del_h1
+            set1 = _mm_loadu_ps(&del_h1[0]);
             
+            //calculate del_w1*del_h1
+            setResults2 = _mm_mul_ps(set1, setResults1);
+            _mm_store_ps(&f1[0], setResults2);
             
+            //get del_h
+            set1 = _mm_loadu_ps(&del_h[0]);
+            //calculate del_h1*del_w1
+            setResults2 = _mm_mul_ps(set1, setResults1);
+            _mm_store_ps(&f2[0], setResults2);
             
+            set1 = _mm_loadu_ps(&del_h1[0]);
+            
+            //calculate del_h1*del_w
+            setResults2 = _mm_mul_ps(set2, set1);
+            _mm_store_ps(&f3[0], setResults2);
+            
+            //calculate del_h*del_w
+            set1 = _mm_loadu_ps(&del_h[0]);
+            setResults2 = _mm_mul_ps(set1, set2);
+            _mm_store_ps(&f4[0], setResults2);
+        
+        for(int k=0;k<4;k++)
+        {
 
+            img2.gray_Data[(i*w2)+j+k] = (p1[k]*quant(f1[k])+p2[k]*quant(f2[k])+p3[k]*quant(f3[k])+p4[k]*quant(f4[k]))>>8;
         }
-        temp_count+=1;
+        }
     }
-    
-    img2.height =h2;
+    free(ones);
+    img2.height = h2;
     img2.width = w2;
+    
     return img2;
 }
-
 
 
 /* Main function.
@@ -215,8 +201,7 @@ int main(int argc,  char * argv[])
     
     struct image get_Image(char []);
     
-    struct image biLinearInterPolateSSE(struct image img1, int h2, int w2);
-
+    struct image biLinearInterPolateSSE(struct image img_ran,int h_ran, int w_ran);
     
     //get file name
     char *filename = argv[3];
@@ -225,11 +210,10 @@ int main(int argc,  char * argv[])
     
     int height2 = (int) strtol(argv[1], NULL, 0);
     int width2 = (int) strtol(argv[2], NULL, 0);
+    
     time_Log = clock();
 
-    
     struct image img_OP = biLinearInterPolateSSE(image_IP, height2, width2);
-    
     
     time_Log = clock() - time_Log;
 
@@ -261,7 +245,8 @@ int main(int argc,  char * argv[])
             /*formating RGB values to hex, as these are gray scale values so assgning R,G,B same values.
              It is the way MagicWand render an image.
              */
-            unsigned char temp_char = img_OP.gray_Data[(i*w2_temp)+j];
+            
+            unsigned int temp_char = img_OP.gray_Data[(i*w2_temp)+j];
             sprintf(hex,"#%02x%02x%02x",temp_char,temp_char,temp_char);
             PixelSetColor(pixels_op[j],hex);
         }
@@ -277,6 +262,8 @@ int main(int argc,  char * argv[])
     
     //Display the output image.
     MagickDisplayImage(wand_op, ":0");
+    free(img_OP.gray_Data);
+    
     
     //Destroy the image instance.
     wand_op = DestroyMagickWand(wand_op);
