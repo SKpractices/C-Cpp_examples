@@ -12,18 +12,21 @@
 #include <stdint.h>
 
 
-// Deifne macros for fixed point conversion
 
-/*image structure.
- gray_Data = Pointer to store buffer of grayscale values.
- height = Height of image.
- width = Width of image.
- */
+//Macros for fixed point operations:-  
+//quant = This multiplies two float values and quanlize them between 1 to 255. 
 
-
+#define quant(x,y) (unsigned char)(x*y*256.0f)
+#define minusOne(x) (1.0f - x)
+#define getFractionPart(a) (float)(a-(int)(a))
 
 
 
+//image structure.
+//     (1) - gray_Data = Pointer to store buffer of grayscale values.
+//     (2) - height = Height of image.
+//     (3) - width = Width of image.
+ 
 struct image
 {
     unsigned char *gray_Data;
@@ -32,18 +35,22 @@ struct image
 };
 
 
-/*function to get image properties.
- return type : struct image.
- name = Image fila name with path.
- */
+//function to get image properties.
+//return type : struct image.
+//name = path of image with filename.
+
 struct image get_Image(char name[])
 {
     
     MagickWandGenesis();
     MagickBooleanType img_Check;
-    MagickWand *wand_ip; // wand_ip = instance of image.
+
+    // wand_ip = instance of image.
+    MagickWand *wand_ip; 
     wand_ip = NewMagickWand();
-    img_Check =  MagickReadImage(wand_ip, name); // Read image as command line arguments.
+
+    // Read image as command line arguments.
+    img_Check =  MagickReadImage(wand_ip, name); 
     
     if(img_Check==MagickFalse)
     {
@@ -59,10 +66,13 @@ struct image get_Image(char name[])
     //Allocate space for gray scale values.
     size_t total_gray_pixels =  height1*width1;
     unsigned char * image_Buff = (unsigned char *)malloc(total_gray_pixels*sizeof(unsigned char));
-    //perror("memory allocation failure");
-    //exit(EXIT_FAILURE);
+    if(image_Buff==NULL)
+    {
+        printf("Out of memory.");
+        exit(-1);
+    }
     
-    //Read grayscale values ans store them into memory buffer.
+    //Read grayscale values and store them into memory buffer.
     MagickExportImagePixels(wand_ip,   // Image instance
                             0,         // Start X
                             0,         // Start Y
@@ -81,49 +91,64 @@ struct image get_Image(char name[])
     return image1;
 }
 
+
+
+//  function for bilinear interpolation with SSE-2 Optimization. 
+//  Parameters : img1 = Input image for scaling.  
+//               h2   = Height for new image. 
+//               w2   = Width for new image. 
 struct image biLinearInterPolate(struct image img1, int h2, int w2)
 {
     
     struct image img2;
-    img2.gray_Data = (unsigned char *)malloc(h2*w2*sizeof(unsigned char));
+    //allocate space for gray data. 
+    img2.gray_Data = (unsigned char *)malloc(h2*w2*sizeof(unsigned char));    
     img2.height = h2;
     img2.width = w2;
-    unsigned char p1,p2,p3,p4;
+
+
+    //Calculate scale factors for later use. 
+    register float heightRatio = img1.height*(1.0/h2);
+    register float widthRatio = img1.width*(1.0/w2);
+
+    //Pixel values for neighboring pixels
+    unsigned char pixel1,pixel2,pixel3,pixel4;
+
+    //fractions differences between indexes. 
     float del_h,del_h1,del_w,del_w1;
     float height_Frac_Idx,width_Frac_Idx;
-    int f1,f2,f3,f4,height_idx,width_idx;
+    int weight1,weight2,weight3,weight4,height_idx,width_idx;
     
+
     for (int i = 0; i<h2; i++)
     {
-        height_Frac_Idx = ((i*img1.height)/(float)h2);
+        height_Frac_Idx = (i*heightRatio);
         height_idx = (int) height_Frac_Idx;
-        del_h = height_Frac_Idx - height_idx;
-        del_h1 = 1.0f - del_h;
+        del_h = getFractionPart(height_Frac_Idx);
+        del_h1 = minusOne(del_h);
 
         for (int j=0;j<w2;j++)
         {
-            width_Frac_Idx =  ((j*img1.width)/(float)w2);
-            
+
+            width_Frac_Idx =  (j*widthRatio);
             width_idx =  (int) width_Frac_Idx;
             
-            
-            p1 = img1.gray_Data[((height_idx*img1.width)+width_idx)];
-            p2 = img1.gray_Data[((height_idx+1)*img1.width)+width_idx];
-            p3 = img1.gray_Data[(height_idx*img1.width)+(width_idx+1)];
-            p4 = img1.gray_Data[((height_idx+1)*img1.width)+(width_idx+1)];
-            
+            pixel1 = img1.gray_Data[((height_idx*img1.width)+width_idx)];
+            pixel2 = img1.gray_Data[((height_idx+1)*img1.width)+width_idx];
+            pixel3 = img1.gray_Data[(height_idx*img1.width)+(width_idx+1)];
+            pixel4 = img1.gray_Data[((height_idx+1)*img1.width)+(width_idx+1)];
             
             
-            del_w = width_Frac_Idx- width_idx;
-            del_w1 = 1.0f - del_w;
-            
-            f1 = (del_h1)*(del_w1)*256.0f;
-            f2 = (del_h)*(del_w1)*256.0f;
-            f3 = (del_h1)*(del_w)*256.0f;
-            f4 = (del_w)*(del_h)*256.0f;
-            
-            
-            img2.gray_Data[i*w2+j] = (p1*f1 + p2*f2 + p3*f3 + p4*f4)>>8;
+            del_w = getFractionPart(width_Frac_Idx);
+            del_w1 = minusOne(del_w);
+
+
+            weight1 = quant(del_h1,del_w1);
+            weight2 = quant(del_h,del_w1);
+            weight3 = quant(del_h1,del_w);
+            weight4 = quant(del_h,del_w);
+
+            img2.gray_Data[i*w2+j] = (pixel1*weight1 + pixel2*weight2 + pixel3*weight3 + pixel4*weight4)>>8;
         }
     }
     
@@ -131,15 +156,14 @@ struct image biLinearInterPolate(struct image img1, int h2, int w2)
 }
 
 
-/* Main function.
- It accepts three agruments from commandline.
- argv[1] = Height of output image.
- argv[2] = Width of output image.
- argv[3] = filename with path.
- 
- for example -
- ./main.o 1200 800 /Users/SK_Mac/Downloads/image3.jpg
- */
+//Main function.
+// It accepts three agruments from commandline.
+//      argv[1] = Height of output image.
+//      argv[2] = Width of output image.
+//      argv[3] = filename with path.
+//      for example -
+//      ./main.o 1200 800 /Users/SK_Mac/Downloads/image3.jpg
+//
 
 
 int main(int argc,  char * argv[])
@@ -153,17 +177,20 @@ int main(int argc,  char * argv[])
 
     //get file name
     char *filename = argv[3];
+
+
     //Get image properties.
     struct image image_IP = get_Image(filename);
     
     int height2 = (int) strtol(argv[1], NULL, 0);
     int width2 = (int) strtol(argv[2], NULL, 0);
-    
-    
+    time_Log = clock();
+
+    //Perform scaling operation. 
     struct image img_OP = biLinearInterPolate(image_IP, height2, width2);
     
+
     //Initialize the wand for output window.
-    
     MagickWandGenesis();
     // Wand variables
     char hex[8];
